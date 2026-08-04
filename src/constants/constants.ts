@@ -11,3 +11,5 @@ export const STREAM_URL =
 
 export const STATION_NAME = 'All India Radio';
 export const STATION_SUB = 'Prasar Bharati';
+
+export const STALL_TIMEOUT_MS = 12000;

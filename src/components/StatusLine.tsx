@@ -4,28 +4,38 @@ import {colors, space} from '../theme';
 
 type Props = {
   buffering: boolean;
+  reconnecting: boolean;
   error: boolean;
   onRetry: () => void;
 };
 
-export default function StatusLine({buffering, error, onRetry}: Props) {
-  return (
-    <View style={s.row}>
-      {error ? (
-        <>
-          <Text style={s.error}>Stream unavailable</Text>
-          <Pressable onPress={onRetry} accessibilityRole="button" hitSlop={8}>
-            <Text style={s.retry}>Try again</Text>
-          </Pressable>
-        </>
-      ) : buffering ? (
-        <>
-          <ActivityIndicator size="small" color={colors.faint} />
-          <Text style={s.meta}>Buffering</Text>
-        </>
-      ) : null}
-    </View>
-  );
+export default function StatusLine({
+  buffering,
+  reconnecting,
+  error,
+  onRetry,
+}: Props) {
+  if (error) {
+    return (
+      <View style={s.row}>
+        <Text style={s.error}>Connection lost</Text>
+        <Pressable onPress={onRetry} accessibilityRole="button" hitSlop={10}>
+          <Text style={s.retry}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (reconnecting || buffering) {
+    return (
+      <View style={s.row}>
+        <ActivityIndicator size="small" color={colors.faint} />
+        <Text style={s.meta}>{reconnecting ? 'Reconnecting' : 'Buffering'}</Text>
+      </View>
+    );
+  }
+
+  return <View style={s.row} />;
 }
 
 const s = StyleSheet.create({

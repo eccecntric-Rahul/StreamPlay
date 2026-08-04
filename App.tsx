@@ -1,9 +1,10 @@
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, StatusBar, StyleSheet} from 'react-native';
 import Video from 'react-native-video';
 import {useAudioRoute} from './src/modules/audioRoute/useAudioRoute';
 import {
   ROUTE_LABEL,
+  STALL_TIMEOUT_MS,
   STATION_NAME,
   STATION_SUB,
   STREAM_URL,
@@ -18,21 +19,51 @@ export default function App() {
 
   const [paused, setPaused] = useState(true);
   const [buffering, setBuffering] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const reload = () => {
+  const fail = useCallback(() => {
+    setPaused(true);
+    setBuffering(false);
+    setReconnecting(false);
+    setError(true);
+  }, []);
+
+  const reload = useCallback(() => {
     setError(false);
+    setBuffering(false);
+    setReconnecting(true);
     setReloadKey(k => k + 1);
     setPaused(false);
-  };
+  }, []);
 
   const toggle = () => {
     if (error) {
       reload();
       return;
     }
-    setPaused(p => !p);
+    setPaused(p => {
+      if (!p) {
+        setReconnecting(false);
+      }
+      return !p;
+    });
+  };
+
+  const stalled = !paused && !error && (buffering || reconnecting);
+
+  useEffect(() => {
+    if (!stalled) {
+      return;
+    }
+    const timer = setTimeout(fail, STALL_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [stalled, fail]);
+
+  const connected = () => {
+    setBuffering(false);
+    setReconnecting(false);
   };
 
   const playing = !paused && !error;
@@ -47,13 +78,15 @@ export default function App() {
         paused={paused}
         playInBackground
         style={s.player}
-        onBuffer={({isBuffering}) => setBuffering(isBuffering)}
-        onLoad={() => setBuffering(false)}
-        onError={() => {
-          setPaused(true);
-          setBuffering(false);
-          setError(true);
+        onBuffer={({isBuffering}) => {
+          setBuffering(isBuffering);
+          if (!isBuffering) {
+            setReconnecting(false);
+          }
         }}
+        onLoad={connected}
+        onReadyForDisplay={connected}
+        onError={fail}
       />
 
       <Text style={s.wordmark}>STREAMPLAY</Text>
@@ -76,8 +109,15 @@ export default function App() {
       <View style={s.footer}>
         <View style={s.divider} />
         <View style={s.footerRow}>
-          <Text style={s.route}>{ROUTE_LABEL[route]}</Text>
-          <StatusLine buffering={buffering} error={error} onRetry={reload} />
+          <Text style={s.route} numberOfLines={1}>
+            {ROUTE_LABEL[route]}
+          </Text>
+          <StatusLine
+            buffering={buffering && !paused}
+            reconnecting={reconnecting}
+            error={error}
+            onRetry={reload}
+          />
         </View>
       </View>
     </View>
@@ -150,6 +190,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: space.md,
   },
-  route: {fontSize: 12, color: colors.faint},
+  route: {fontSize: 12, color: colors.faint, flexShrink: 1},
 });
