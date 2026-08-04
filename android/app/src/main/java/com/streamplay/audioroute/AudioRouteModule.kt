@@ -1,6 +1,7 @@
 package com.streamplay.audioroute
 
 import android.content.Context
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Handler
@@ -15,24 +16,25 @@ class AudioRouteModule(private val reactContext:ReactApplicationContext):ReactCo
     }
     private val audioManager=reactContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val handler=Handler(Looper.getMainLooper())
-    private val lastRoute:String?=null
+    private var callback:AudioDeviceCallback?=null
+    private var lastRoute:String?=null
 
     init{reactContext.addLifecycleEventListener(this)}
 
-    override fun getName()=NAME;
+    override fun getName()=NAME
 
     @ReactMethod
     fun startListening(){
         if(callback!=null) return
 
-        val cb = object:AudioManager.AudioDeviceCallback(){
-            override fun onAudioDevicesAdded(added:Array<out AudioDeviceInfo>?)=emit()
-            override fun onAudioDevicesRemoved(removed:Array<out AudioDeviceInfo>?)=emit()
+        val cb = object:AudioDeviceCallback(){
+            override fun onAudioDevicesAdded(added:Array<out AudioDeviceInfo>?){emit()}
+            override fun onAudioDevicesRemoved(removed:Array<out AudioDeviceInfo>?){emit()}
         }
 
-            audioManager.registerAudioDeviceCallback(cb,handler)
-            callback=cb
-            emit(force=true)
+        audioManager.registerAudioDeviceCallback(cb,handler)
+        callback=cb
+        emit(force=true)
     }
 
     @ReactMethod
@@ -43,15 +45,13 @@ class AudioRouteModule(private val reactContext:ReactApplicationContext):ReactCo
     }
 
     @ReactMethod
-    fun getCurrentRoute(Promise:Promise){
+    fun getCurrentRoute(promise:Promise){
         try{promise.resolve(resolveRoute())}
         catch(e:Exception){promise.reject("E_AUDIO_ROUTER",e)}
     }
-     
- 
-      @ReactMethod fun addListener(eventName: String) {}
-      @ReactMethod fun removeListeners(count: Int) {}
 
+    @ReactMethod fun addListener(eventName: String) {}
+    @ReactMethod fun removeListeners(count: Int) {}
 
     private fun resolveRoute():String{
         val types = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map{it.type}
@@ -75,19 +75,19 @@ class AudioRouteModule(private val reactContext:ReactApplicationContext):ReactCo
         if(!force && route==lastRoute) return
         lastRoute=route
 
-        if(!reactContext.hasActiveCatalystInstance()) return
+        if(!reactContext.hasActiveReactInstance()) return
         val payload = Arguments.createMap().apply{putString("route",route)}
         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             .emit(EVENT,payload)
     }
 
-    override fun onHostResume()={}
-    override fun onHostPause()={}
+    override fun onHostResume(){}
+    override fun onHostPause(){}
     override fun onHostDestroy(){
         stopListening()
     }
 
-    override fun initialize(){
+    override fun invalidate(){
         stopListening()
         reactContext.removeLifecycleEventListener(this)
         super.invalidate()

@@ -14,6 +14,6 @@ export const AudioRouteAPI = {
   stop: () => native.stopListening(),
   getCurrent: (): Promise<AudioRoute> => native.getCurrentRoute(),
   subscribe: (cb: (r: AudioRoute) => void) =>
-    emitter.addListener('audioRouteChanged', (e: { route: AudioRoute }) => cb(e.route)),
+    emitter.addListener('onAudioRouteChanged', (e: { route: AudioRoute }) => cb(e.route)),
 };
 
