@@ -1,12 +1,19 @@
 import React, {useState} from 'react';
-import {SafeAreaView, View, Text, Button, ActivityIndicator} from 'react-native';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  Button,
+  ActivityIndicator,
+} from 'react-native';
 import Video from 'react-native-video';
 import {useAudioRoute} from './src/modules/audioRoute/useAudioRoute';
-import {ROUTE_LABEL, STREAM_URL} from './src/constants/constants';
+import {ROUTE_LABEL, Status, STREAM_URL} from './src/constants/constants';
 
 export default function App() {
   const route = useAudioRoute();
 
+  const [status, setStatus] = useState<Status>('idle');
   const [paused, setPaused] = useState(true);
   const [buffering, setBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,13 +24,14 @@ export default function App() {
     setPaused(p => !p);
   };
 
-  const retry = () => {
+  const reload = () => {
     setError(null);
     setBuffering(true);
     setReloadKey(k => k + 1); // remount forces a fresh connection
     setPaused(false);
   };
 
+  const isPlaying = status === 'playing' || status === 'buffering';
   return (
     <SafeAreaView>
       <Video
@@ -32,12 +40,17 @@ export default function App() {
         paused={paused}
         playInBackground
         style={{width: 0, height: 0}}
-        onBuffer={({isBuffering}) => setBuffering(isBuffering)}
-        onLoad={() => {
-          setBuffering(false);
-          setError(null);
+        audioOnly
+        onBuffer={({isBuffering}) =>
+          setStatus(s =>
+            s === 'error' ? s : isBuffering ? 'buffering' : 'playing',
+          )
+        }
+        onLoad={() => setStatus('playing')}
+        onError={() => {
+          setPaused(true); // keep intent and reality in sync
+          setStatus('error');
         }}
-        onError={() => setError('Stream unavailable. Check your connection.')}
       />
 
       <View>
@@ -45,19 +58,19 @@ export default function App() {
         <Text>All India Radio — Live</Text>
         <Text>Prasar Bharati</Text>
 
-        <Button title={paused ? 'Play' : 'Pause'} onPress={toggle} />
+        <Button title={isPlaying ? 'Pause' : 'Play'} onPress={toggle} />
 
-        {buffering && (
+        {status === 'buffering' && (
           <View>
             <ActivityIndicator />
             <Text>Buffering…</Text>
           </View>
         )}
 
-        {error && (
+        {status === 'error' && (
           <View>
-            <Text>{error}</Text>
-            <Button title="Retry" onPress={retry} />
+            <Text>Stream unavailable.</Text>
+            <Button title="Try again" onPress={reload} />
           </View>
         )}
       </View>

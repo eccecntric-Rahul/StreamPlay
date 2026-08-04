@@ -9,3 +9,6 @@ export const ROUTE_LABEL: Record<AudioRoute, string> = {
 
 export const STREAM_URL =
   'https://air.pc.cdn.bitgravity.com/air/live/pbaudio001/playlist.m3u8';
+  
+export type Status = 'idle' | 'buffering' | 'playing' | 'paused' | 'error';
+  
