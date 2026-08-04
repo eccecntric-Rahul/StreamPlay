@@ -1,35 +1,66 @@
-/**
- * @format
- */
-
-import React, {useEffect, useRef} from 'react';
-import {Alert, StyleSheet, Text, View} from 'react-native';
-
+import React, {useState} from 'react';
+import {SafeAreaView, View, Text, Button, ActivityIndicator} from 'react-native';
+import Video from 'react-native-video';
 import {useAudioRoute} from './src/modules/audioRoute/useAudioRoute';
+import {ROUTE_LABEL, STREAM_URL} from './src/constants/constants';
 
-function App(): React.JSX.Element {
+export default function App() {
   const route = useAudioRoute();
-  const prev = useRef<string | null>(null);
 
-  useEffect(() => {
-    // Skip the first render: an alert fired before the activity is resumed
-    // gets dropped by Android's dialog manager.
-    if (prev.current !== null && prev.current !== route) {
-      Alert.alert('Audio route', route);
-    }
-    prev.current = route;
-  }, [route]);
+  const [paused, setPaused] = useState(true);
+  const [buffering, setBuffering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const toggle = () => {
+    setError(null);
+    setPaused(p => !p);
+  };
+
+  const retry = () => {
+    setError(null);
+    setBuffering(true);
+    setReloadKey(k => k + 1); // remount forces a fresh connection
+    setPaused(false);
+  };
 
   return (
-    <View style={styles.screen}>
-      <Text style={styles.route}>{route}</Text>
-    </View>
+    <SafeAreaView>
+      <Video
+        key={reloadKey}
+        source={{uri: STREAM_URL}}
+        paused={paused}
+        playInBackground
+        style={{width: 0, height: 0}}
+        onBuffer={({isBuffering}) => setBuffering(isBuffering)}
+        onLoad={() => {
+          setBuffering(false);
+          setError(null);
+        }}
+        onError={() => setError('Stream unavailable. Check your connection.')}
+      />
+
+      <View>
+        <Text>Playing on: {ROUTE_LABEL[route]}</Text>
+        <Text>All India Radio — Live</Text>
+        <Text>Prasar Bharati</Text>
+
+        <Button title={paused ? 'Play' : 'Pause'} onPress={toggle} />
+
+        {buffering && (
+          <View>
+            <ActivityIndicator />
+            <Text>Buffering…</Text>
+          </View>
+        )}
+
+        {error && (
+          <View>
+            <Text>{error}</Text>
+            <Button title="Retry" onPress={retry} />
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  route: {fontSize: 32, fontWeight: '700'},
-});
-
-export default App;
