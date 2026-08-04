@@ -110,7 +110,7 @@ export default function App() {
         <View style={s.divider} />
         <View style={s.footerRow}>
           <Text style={s.route} numberOfLines={1}>
-            {ROUTE_LABEL[route]}
+            Playing on: {ROUTE_LABEL[route]}
           </Text>
           <StatusLine
             buffering={buffering && !paused}
