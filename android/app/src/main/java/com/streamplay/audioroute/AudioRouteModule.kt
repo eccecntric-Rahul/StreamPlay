@@ -63,7 +63,9 @@ class AudioRouteModule(private val reactContext:ReactApplicationContext):ReactCo
 
             types.any {
                 it == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                it == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                it == AudioDeviceInfo.TYPE_USB_DEVICE
             } -> "wired"
 
             else -> "speaker"
